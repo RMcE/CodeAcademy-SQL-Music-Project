@@ -1,5 +1,5 @@
 # CodeAcademy-SQL-Music-Project
-Codeacademy Data Science independent project 2 answers.
+## Codeacademy Data Science independent project 2 answers.
 
 All files pulled from sqlite example database. 
 Sample questions can be seen on link below.
