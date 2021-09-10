@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="UTF-8"?><sqlb_project><db path="C:/sqlite/db/chinook.db" readonly="0" foreign_keys="1" case_sensitive_like="0" temp_store="0" wal_autocheckpoint="1000" synchronous="2"/><attached/><window><main_tabs open="structure pragmas query browser" current="2"/></window><tab_structure><column_width id="0" width="300"/><column_width id="1" width="0"/><column_width id="2" width="150"/><column_width id="3" width="6053"/><column_width id="4" width="0"/><expanded_item id="0" parent="1"/><expanded_item id="1" parent="1"/><expanded_item id="2" parent="1"/><expanded_item id="3" parent="1"/></tab_structure><tab_browse><current_table name="4,6:mainalbums"/><default_encoding codec=""/><browse_table_settings><table schema="main" name="albums" show_row_id="0" encoding="" plot_x_axis="" unlock_view_pk="_rowid_"><sort/><column_widths><column index="1" value="100"/><column index="2" value="300"/><column index="3" value="90"/></column_widths><filter_values/><conditional_formats/><row_id_formats/><display_formats/><hidden_columns/><plot_y_axes/><global_filter/></table><table schema="main" name="employees" show_row_id="0" encoding="" plot_x_axis="" unlock_view_pk="_rowid_"><sort/><column_widths><column index="1" value="133"/><column index="2" value="111"/><column index="3" value="115"/><column index="4" value="187"/><column index="5" value="115"/><column index="6" value="195"/><column index="7" value="195"/><column index="8" value="275"/><column index="9" value="102"/><column index="10" value="65"/><column index="11" value="92"/><column index="12" value="123"/><column index="13" value="178"/><column index="14" value="178"/><column index="15" value="256"/></column_widths><filter_values/><conditional_formats/><row_id_formats/><display_formats/><hidden_columns/><plot_y_axes/><global_filter/></table><table schema="main" name="invoice_items" show_row_id="0" encoding="" plot_x_axis="" unlock_view_pk="_rowid_"><sort/><column_widths><column index="1" value="153"/><column index="2" value="111"/><column index="3" value="91"/><column index="4" value="105"/><column index="5" value="99"/></column_widths><filter_values><column index="3" value="2868"/></filter_values><conditional_formats/><row_id_formats/><display_formats/><hidden_columns/><plot_y_axes/><global_filter/></table><table schema="main" name="invoices" show_row_id="0" encoding="" plot_x_axis="" unlock_view_pk="_rowid_"><sort/><column_widths><column index="1" value="111"/><column index="2" value="131"/><column index="3" value="195"/><column index="4" value="300"/><column index="5" value="199"/><column index="6" value="129"/><column index="7" value="156"/><column index="8" value="187"/><column index="9" value="62"/></column_widths><filter_values/><conditional_formats/><row_id_formats/><display_formats/><hidden_columns/><plot_y_axes/><global_filter/></table></browse_table_settings></tab_browse><tab_sql><sql name="SQL 1">-- Which tracks appeared in the most playlists? how many playlist did they appear in?
+SELECT pt.TrackId,COUNT(PlaylistId) AS '# times in playlist',*
+FROM playlist_track AS pt
+JOIN tracks AS t
+ON pt.TrackId = t.TrackId
+GROUP BY pt.TrackId
+ORDER BY 2 DESC
+LIMIT 10;</sql><sql name="SQL 2">SELECT tracks.TrackId,tracks.Name, SUM(Total) AS 'Total Rev'
+FROM tracks JOIN invoice_items
+ON tracks.TrackId = invoice_items.TrackId
+JOIN invoices
+ON invoice_items.InvoiceId = invoices.InvoiceId
+GROUP BY tracks.TrackId
+ORDER BY SUM(Total) DESC;</sql><sql name="SQL 3">SELECT albums.Title, SUM(Total) AS 'Total Rev'
+FROM albums JOIN tracks
+ON albums.AlbumId = tracks.AlbumId
+JOIN invoice_items
+ON tracks.TrackId = invoice_items.TrackId
+JOIN invoices
+ON invoice_items.InvoiceId = invoices.InvoiceId
+GROUP BY 1
+ORDER BY 2 DESC;</sql><sql name="SQL 4">SELECT genres.name, SUM(Total) AS 'Total Rev'
+FROM genres LEFT JOIN tracks
+ON genres.GenreId = tracks.GenreId
+JOIN invoice_items
+ON tracks.TrackId = invoice_items.TrackId
+JOIN invoices
+ON invoice_items.InvoiceId = invoices.InvoiceId
+GROUP BY 1
+ORDER BY 2 DESC;</sql><sql name="SQL 5">SELECT Country, SUM(Total)as'Country Rev',Total, SUM(SUM(Total))OVER()AS 'Total Rev',ROUND(SUM(Total)/SUM(SUM(Total))OVER(),4)*100 AS 'Percent share'
+FROM invoices
+JOIN customers
+ON invoices.CustomerId = customers.CustomerId
+GROUP BY Country
+ORDER BY SUM(Total) DESC;</sql><sql name="SQL 6">WITH total_avg_revenue AS (
+SELECT SUM(Total) AS 'customer_total', COUNT(invoiceId) AS 'no_of_invoices',customers.CustomerId,SupportRepId
+FROM customers JOIN invoices
+ON customers.CustomerId = invoices.CustomerId
+GROUP BY customers.CustomerId
+)
+SELECT EmployeeId,FirstName,LastName,COUNT(CustomerId) AS '# of customers supported',
+SUM(customer_total) AS 'Total rev generated',ROUND(AVG(customer_total),2) AS 'average_revenue_per_cust'
+FROM employees LEFT JOIN total_avg_revenue
+ON employees.EmployeeId = total_avg_revenue.SupportRepId
+GROUP BY EmployeeId;
+</sql><sql name="SQL 8">WITH album_length AS
+( SELECT albums.AlbumId,Title,SUM(Milliseconds)/1000/60 AS 'album_length_min',
+CASE
+WHEN SUM(Milliseconds)/1000/60 &gt;=60 AND SUM(Milliseconds)/1000/60 &lt;= 90
+	THEN 'Long'
+WHEN SUM(Milliseconds)/1000/60 &gt; 100
+	THEN 'Very Long'
+ELSE 'Short'
+END 'Album_Length'
+FROM albums JOIN tracks
+ON albums.AlbumId=tracks.AlbumId
+GROUP BY albums.AlbumId
+ORDER BY 2 ASC
+)
+SELECT album_length.Title,tracks.AlbumId,album_length_min,Album_Length,ROUND(SUM(Total),2) AS 'Total_album_revenue'
+FROM album_length JOIN tracks
+ON album_length.AlbumId = tracks.AlbumId
+JOIN invoice_items
+ON tracks.TrackId = invoice_items.TrackId
+JOIN invoices
+ON invoice_items.InvoiceId = invoices.InvoiceId
+GROUP BY 2
+ORDER BY 5 DESC;
+  </sql><sql name="SQL 9">WITH track_count_in_playlist AS 
+( SELECT Name, tracks.TrackId, COUNT(PlaylistId) AS 'count_in_playlist'
+  FROM playlist_track JOIN tracks
+  ON playlist_track.TrackId = tracks.TrackId
+  GROUP BY 2
+  ORDER BY 3
+)
+SELECT track_count_in_playlist.TrackId,count_in_playlist, SUM(Total)/count_in_playlist AS 'revenue_per_track_in_playlist '
+FROM track_count_in_playlist 
+JOIN invoice_items
+ON track_count_in_playlist.TrackId = invoice_items.TrackId
+JOIN invoices
+ON invoice_items.InvoiceId = invoices.InvoiceId
+GROUP BY 1
+ORDER BY 3 DESC;</sql><current_tab id="0"/></tab_sql></sqlb_project>
