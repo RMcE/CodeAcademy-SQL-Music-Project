@@ -1,4 +1,4 @@
-**Q1:-- Which tracks appeared in the most playlists? how many playlist did they appear in?**
+## Q1:-- Which tracks appeared in the most playlists? how many playlist did they appear in?
 SELECT pt.TrackId,COUNT(PlaylistId) AS '# times in playlist',*
 FROM playlist_track AS pt
 JOIN tracks AS t
@@ -7,7 +7,7 @@ GROUP BY pt.TrackId
 ORDER BY 2 DESC
 LIMIT 10;
 
-## Q2
+## Q2: -- Which track generated the most revenue?
 SELECT tracks.TrackId,tracks.Name, SUM(Total) AS 'Total Rev'
 FROM tracks JOIN invoice_items
 ON tracks.TrackId = invoice_items.TrackId
@@ -16,7 +16,7 @@ ON invoice_items.InvoiceId = invoices.InvoiceId
 GROUP BY tracks.TrackId
 ORDER BY SUM(Total) DESC;
 
-## Q3
+## Q3: -- which album?
 SELECT albums.Title, SUM(Total) AS 'Total Rev'
 FROM albums JOIN tracks
 ON albums.AlbumId = tracks.AlbumId
@@ -27,7 +27,7 @@ ON invoice_items.InvoiceId = invoices.InvoiceId
 GROUP BY 1
 ORDER BY 2 DESC;
 
-## Q4
+## Q4: -- which genre?
 SELECT genres.name, SUM(Total) AS 'Total Rev'
 FROM genres LEFT JOIN tracks
 ON genres.GenreId = tracks.GenreId
@@ -38,7 +38,7 @@ ON invoice_items.InvoiceId = invoices.InvoiceId
 GROUP BY 1
 ORDER BY 2 DESC;
 
-## Q5
+## Q5:-- Which countries have the highest sales revenue? What percent of total revenue does each country make up?
 SELECT Country, SUM(Total)as'Country Rev',Total, SUM(SUM(Total))OVER()AS 'Total Rev',ROUND(SUM(Total)/SUM(SUM(Total))OVER(),4)*100 AS 'Percent share'
 FROM invoices
 JOIN customers
@@ -46,7 +46,7 @@ ON invoices.CustomerId = customers.CustomerId
 GROUP BY Country
 ORDER BY SUM(Total) DESC;
 
-## Q6
+## Q6: -- How many customers did each employee support, what is the average revenue for each sale, and what is their total sale?
 WITH total_avg_revenue AS (
 SELECT SUM(Total) AS 'customer_total', COUNT(invoiceId) AS 'no_of_invoices',customers.CustomerId,SupportRepId
 FROM customers JOIN invoices
@@ -59,7 +59,7 @@ FROM employees LEFT JOIN total_avg_revenue
 ON employees.EmployeeId = total_avg_revenue.SupportRepId
 GROUP BY EmployeeId;
 
-## Q7
+## Q7: Do longer or shorter length albums tend to generate more revenue?
 WITH album_length AS
 ( SELECT albums.AlbumId,Title,SUM(Milliseconds)/1000/60 AS 'album_length_min',
 CASE
@@ -84,7 +84,7 @@ ON invoice_items.InvoiceId = invoices.InvoiceId
 GROUP BY 2
 ORDER BY 5 DESC;
 
-## Q8
+## Q8: -- Is the number of times a track appear in any playlist a good indicator of sales?
 WITH track_count_in_playlist AS 
 ( SELECT Name, tracks.TrackId, COUNT(PlaylistId) AS 'count_in_playlist'
   FROM playlist_track JOIN tracks
@@ -100,3 +100,14 @@ JOIN invoices
 ON invoice_items.InvoiceId = invoices.InvoiceId
 GROUP BY 1
 ORDER BY 3 DESC;
+
+Q9: -- How much revenue is generated each year, and what is its percent change 37 from the previous year? 
+WITH revenue as
+( SELECT CAST(STRFTIME('%Y',InvoiceDate) as INT) AS 'Year', CAST(STRFTIME('%Y',InvoiceDate) as INT) - 1 AS 'Prev_Year', SUM(Total) AS 'Revenue_for_Year'
+  FROM invoices
+  GROUP BY 1
+  ORDER BY 1 DESC
+)
+SELECT curr.Year, curr.Prev_Year, curr.Revenue_for_Year, ROUND((curr.Revenue_for_Year - prev.Revenue_for_Year)/prev.Revenue_for_Year * 1.0, 2) AS 'Pct_change_compared_to_last_year'
+FROM revenue curr LEFT JOIN revenue prev
+ON curr.Prev_Year = prev.Year;
